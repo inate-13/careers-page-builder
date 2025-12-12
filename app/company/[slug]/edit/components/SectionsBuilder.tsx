@@ -155,7 +155,7 @@ export default function SectionsBuilder({
       const copy = [...sections];
       const dragItemContent = copy[dragItem.current];
       copy.splice(dragItem.current, 1);
-      copy.splice(dragOverItem.current, 0, dragItemContent);
+      copy.splice(dragOverItem.current, 0);
 
       const next = copy.map((s, i) => ({ ...s, order_index: i }));
       setSections(next);

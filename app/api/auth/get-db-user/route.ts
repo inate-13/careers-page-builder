@@ -1,7 +1,7 @@
 // app/api/auth/get-db-user/route.ts
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { supabaseAdmin } from '../../../lib/supabaseServer';
+import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import type { DBUser } from '../../../types/db';
 
 const Body = z.object({ id: z.string().uuid(), email: z.string().email().optional() });

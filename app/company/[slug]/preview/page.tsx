@@ -42,7 +42,7 @@ export default async function PreviewPage({ params }: { params: { slug: string }
       <CompanyHeader company={company} />
 
       {/* --- SECTIONS --- */}
-      <div className="flex flex-col">
+      <div className="flex flex-col mt-8">
         {(sections ?? []).filter((s: any) => s.visible !== false).map((section: any) => (
           <SectionRenderer key={section.id} section={section} primaryColor={primaryColor} />
         ))}

@@ -1,6 +1,6 @@
 // app/api/auth/register/route.ts
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseServer';
+import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { z } from 'zod';
 
 const BodySchema = z.object({

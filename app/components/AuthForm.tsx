@@ -34,7 +34,7 @@ export default function AuthForm({ mode = 'login' }: { mode?: 'login' | 'signup'
     setLoading(true);
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password }, { data: { full_name: name } });
+        const { error } = await supabase.auth.signUp({ email, password } );
         if (error) throw error;
         showToast('Signup successful — check your email if confirmation is enabled', 'success');
         router.push('/login');

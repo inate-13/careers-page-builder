@@ -37,7 +37,7 @@ export default function NavBar() {
         <div>
           {user ? (
             <Link href="/dashboard" className="inline-flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold">CB</div>
+              {/* <div className="w-8 h-8 rounded bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold">CB</div> */}
               <span className="font-semibold">CareersBuilder</span>
             </Link>
           ) : (
@@ -50,7 +50,9 @@ export default function NavBar() {
             <div className="text-sm text-slate-500">Loading…</div>
           ) : user ? (
             <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="px-3 py-2 rounded hover:bg-slate-100">Dashboard</Link>
+              <Link href="/dashboard" 
+              className="px-3 py-2 rounded hover:bg-slate-100"
+              >Dashboard</Link>
 
                             <button onClick={signOut} className="px-3 py-2 bg-red-600 text-slate-100 rounded">Logout</button>
 

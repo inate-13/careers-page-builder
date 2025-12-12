@@ -30,8 +30,8 @@ export default function DashboardPage() {
       .finally(() => setLoadingCompanies(false));
   }, [user]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this company and all data?')) return;
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Delete ${name} and all data?`)) return;
     await fetch('/api/company/delete', { method: 'POST', body: JSON.stringify({ companyId: id }), headers: { 'Content-Type': 'application/json' } });
     setCompanies(prev => prev.filter(c => c.id !== id));
   };
@@ -43,7 +43,10 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800">Your Companies</h1>
-          <button onClick={() => router.push('/company/create')} className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700">
+          <button
+            onClick={() => router.push('/company/create')}
+            className="px-6 py-3 bg-indigo-600 text-black rounded-full font-semibold transition-all duration-200 hover:bg-indigo-700 hover:scale-105 active:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
+          >
             + Create New Company
           </button>
         </div>
@@ -81,7 +84,7 @@ export default function DashboardPage() {
                     <td className="px-6 py-5 text-right space-x-2">
                       <button onClick={() => router.push(`/company/${c.slug}/edit`)} className="px-4 py-2 bg-blue-600 text-black rounded hover:bg-blue-700">Edit</button>
                       <button onClick={() => router.push(`/${c.slug}/careers`)} className="px-4 py-2 bg-green-600 text-black rounded hover:bg-green-700">View</button>
-                      <button onClick={() => handleDelete(c.id)} className="px-4 py-2 bg-red-600 text-black rounded hover:bg-red-700">Delete</button>
+                      <button onClick={() => handleDelete(c.id , c.name)} className="px-4 py-2 bg-red-600 text-black rounded hover:bg-red-700">Delete</button>
                     </td>
                   </tr>
                 ))}

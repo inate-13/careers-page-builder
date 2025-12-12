@@ -1,6 +1,6 @@
 // app/page.tsx
 import Link from 'next/link';
-import Button from './components/ui/Button';
+// import Button from './components/ui/Button';
 
 // app/page.tsx
 export default function HomePage() {

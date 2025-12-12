@@ -4,7 +4,15 @@ import { v2 as cloudinary } from 'cloudinary';
 import stream from 'stream';
 import { promisify } from 'util';
 
-export const config = { api: { bodyParser: false } };
+/**
+ * NOTE:
+ * - Removed deprecated `export const config = { api: { bodyParser: false } }`
+ * - This route uses Node-only modules (cloudinary v2, stream), so we must run it on Node runtime.
+ * - Exporting `runtime = 'nodejs'` and `dynamic = 'force-dynamic'` is the recommended replacement.
+ */
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // Configure Cloudinary using env vars (ensure .env.local set and server restarted)
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {

@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .upsert(upsertObj, { onConflict: 'id', returning: 'representation' });
+      .upsert(upsertObj, { onConflict: 'id' });
 
     if (error) {
       console.error('sync-profile upsert error', error);
