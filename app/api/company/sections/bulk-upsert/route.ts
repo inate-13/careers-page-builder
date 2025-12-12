@@ -13,16 +13,20 @@ export async function POST(req: Request) {
 
     const now = new Date().toISOString();
 
-    // 1) Delete requested IDs (if any)
+    // 1) Delete requested IDs
     if (deletedIds.length > 0) {
       const { error: delErr } = await supabaseAdmin.from('company_sections').delete().in('id', deletedIds);
       if (delErr) {
         console.error('bulk-upsert delete error', delErr);
-        // continue — don't fail the entire operation, but report
+        // return error so caller knows deletion failed (RLS or FK may block)
+        return NextResponse.json({ error: 'Failed to delete sections', details: delErr }, { status: 500 });
       }
     }
 
-    // 2) Upsert: for each section, if id starts with 'new-' -> insert, else update
+    // 2) Process sections sequentially (small number expected)
+    const insertErrors: any[] = [];
+    const updateErrors: any[] = [];
+
     for (const s of sections) {
       if (!s) continue;
       if (typeof s.id === 'string' && s.id.startsWith('new-')) {
@@ -38,8 +42,11 @@ export async function POST(req: Request) {
           created_at: now,
           updated_at: now,
         };
-        const { error: insErr } = await supabaseAdmin.from('company_sections').insert(ins);
-        if (insErr) console.error('bulk-upsert insert err', insErr);
+        const { data: inserted, error: insErr } = await supabaseAdmin.from('company_sections').insert(ins).select().single();
+        if (insErr) {
+          console.error('bulk-upsert insert err', insErr, 'payload:', ins);
+          insertErrors.push({ error: insErr, payload: ins });
+        }
       } else if (s.id) {
         const patch = {
           type: s.type ?? 'default',
@@ -51,13 +58,25 @@ export async function POST(req: Request) {
           order_index: s.order_index ?? 0,
           updated_at: now,
         };
-        const { error: upErr } = await supabaseAdmin.from('company_sections').update(patch).eq('id', s.id);
-        if (upErr) console.error('bulk-upsert update err', upErr);
+        const { data: updated, error: upErr } = await supabaseAdmin.from('company_sections').update(patch).eq('id', s.id).select().single();
+        if (upErr) {
+          console.error('bulk-upsert update err', upErr, 'id:', s.id, 'patch:', patch);
+          updateErrors.push({ error: upErr, id: s.id, patch });
+        }
       }
     }
 
-    // 3) Return authoritative sections ordered by order_index
-    const { data: freshSections, error: fetchErr } = await supabaseAdmin.from('company_sections').select('*').eq('company_id', companyId).order('order_index', { ascending: true });
+    if (insertErrors.length || updateErrors.length) {
+      return NextResponse.json({ error: 'Some inserts/updates failed', insertErrors, updateErrors }, { status: 500 });
+    }
+
+    // 3) Return authoritative sections
+    const { data: freshSections, error: fetchErr } = await supabaseAdmin
+      .from('company_sections')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('order_index', { ascending: true });
+
     if (fetchErr) {
       console.error('bulk-upsert fetch err', fetchErr);
       return NextResponse.json({ error: fetchErr.message ?? String(fetchErr) }, { status: 500 });
