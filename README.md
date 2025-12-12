@@ -2,7 +2,7 @@
         **    Career Page Builder ** 
 
   Deployment -- https://careers-page-builder-rho.vercel.app/
-  Demo  link  -- 
+  Demo  link  -- https://drive.google.com/file/d/1R92IoovQUe4iL9vJorbzUjuuy_w2VVSt/view?usp=drive_link
  
  
  
