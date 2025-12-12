@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin'; // Corrected relativ
 import type { Metadata } from 'next';
 import Link from 'next/link';
 // CRITICAL FIX: Force dynamic rendering to ensure fresh 'published' status
-export const dynamic = 'force-dynamic'; 
+export const dynamic = 'force-dynamic';
 
 // --- (Rest of the component code, unchanged from the last excellent version, but repeated for completeness) ---
 
@@ -42,32 +42,34 @@ type Job = {
     employment_type: string;
     department: string;
     posted_days_ago?: number;
+    salary_range?: string;
+    work_policy?: string;
 };
 
 // --- Utility: Embeds YouTube video ---
 function embedYouTube(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes('youtu.be')) {
-      const id = u.pathname.slice(1);
-      return `https://www.youtube.com/embed/${id}`;
-    }
-    if (u.hostname.includes('youtube.com')) {
-      const v = u.searchParams.get('v');
-      if (v) return `https://www.youtube.com/embed/${v}`;
-    }
-  } catch { }
-  return null;
+    if (!url) return null;
+    try {
+        const u = new URL(url);
+        if (u.hostname.includes('youtu.be')) {
+            const id = u.pathname.slice(1);
+            return `https://www.youtube.com/embed/${id}`;
+        }
+        if (u.hostname.includes('youtube.com')) {
+            const v = u.searchParams.get('v');
+            if (v) return `https://www.youtube.com/embed/${v}`;
+        }
+    } catch { }
+    return null;
 }
 
 // --- Metadata Generation (Server Component) ---
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  const { slug } = params;
-  const { data: company } = await supabaseAdmin.from('companies').select('name,tagline').eq('slug', slug).eq('published', true).maybeSingle();
-  const title = company?.name ? `${company.name} — Careers` : 'Careers';
-  const description = company?.tagline ?? 'Open roles at the company.';
-  return { title, description };
+    const { slug } = params;
+    const { data: company } = await supabaseAdmin.from('companies').select('name,tagline').eq('slug', slug).eq('published', true).maybeSingle();
+    const title = company?.name ? `${company.name} — Careers` : 'Careers';
+    const description = company?.tagline ?? 'Open roles at the company.';
+    return { title, description };
 }
 
 
@@ -95,28 +97,39 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
             </div>
         );
     }
-    
+
     const { data: sections } = await supabaseAdmin
         .from('company_sections')
         .select('*')
         .eq('company_id', company.id)
         .eq('visible', true) // Only show visible sections
         .order('order_index', { ascending: true });
-    
+
     // 2. Fetch Jobs (placeholder - assuming a separate jobs table and query)
-    const { data: jobs } = await supabaseAdmin
+    let jobQuery = supabaseAdmin
         .from('jobs')
-        .select('id, title, location, experience_level, employment_type, department, posted_days_ago')
+        .select('id, title, location, experience_level, employment_type, department, posted_days_ago, salary_range, work_policy')
         .eq('company_id', company.id)
-        .eq('is_active', true)
-        // Add filtering logic here based on searchParams (q, location, job_type)
         .order('created_at', { ascending: false });
+
+    // Apply Filters
+    if (q) {
+        jobQuery = jobQuery.ilike('title', `%${q}%`);
+    }
+    if (location) {
+        jobQuery = jobQuery.ilike('location', `%${location}%`);
+    }
+    if (job_type) {
+        jobQuery = jobQuery.eq('employment_type', job_type);
+    }
+
+    const { data: jobs } = await jobQuery;
 
     // 3. Dynamic Theming Logic (CSS Variables)
     // Fallback colors for safety
     const primaryColor = company.primary_color ?? '#0ea5e9'; // Tailwind sky-600
     const accentColor = company.accent_color ?? '#7c3aed'; // Tailwind violet-600
-    
+
     const themeStyles = {
         '--color-primary': primaryColor,
         '--color-accent': accentColor,
@@ -126,8 +139,8 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
 
     return (
         // Apply dynamic styles to the root container
-        <div 
-            className="min-h-screen bg-gray-50 font-sans" 
+        <div
+            className="min-h-screen bg-gray-50 font-sans"
             style={themeStyles}
         >
             {/* Header */}
@@ -158,10 +171,10 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
 
             {/* Main Content Grid */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 gap-10">
-                
+
                 {/* Dynamic Sections */}
                 {(sections ?? []).map((s: Section) => {
-                    if (!s.visible || (!s.title && !s.content && !s.media_url && s.type !== 'jobs' && s.type !== 'culture_video')) return null; 
+                    if (!s.visible || (!s.title && !s.content && !s.media_url && s.type !== 'jobs' && s.type !== 'culture_video')) return null;
 
                     // Special case: Culture Video
                     if (s.type === 'culture_video') {
@@ -170,7 +183,7 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
                             <section key={s.id} className="bg-white p-8 rounded-2xl shadow-xl">
                                 <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: 'var(--color-primary)' }}>{s.title ?? 'Our Culture Video'}</h2>
                                 {embedSrc ? (
-                                    <div className="relative w-full max-w-4xl mx-auto overflow-hidden" style={{paddingTop: '56.25%'}}> {/* 16:9 Aspect Ratio */}
+                                    <div className="relative w-full max-w-4xl mx-auto overflow-hidden" style={{ paddingTop: '56.25%' }}> {/* 16:9 Aspect Ratio */}
                                         <iframe
                                             src={embedSrc}
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -185,7 +198,7 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
                             </section>
                         );
                     }
-                    
+
                     // General Content Sections
                     return (
                         <section key={s.id} className="bg-white p-8 rounded-2xl shadow-xl">
@@ -207,7 +220,7 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
                 {/* Jobs List Section */}
                 <section id="jobs" className="bg-white p-8 rounded-2xl shadow-xl space-y-6">
                     <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-primary)' }}>Current Openings</h2>
-                    
+
                     {/* Job Search/Filter Form */}
                     <form className="flex flex-col sm:flex-row gap-3 pb-6 border-b border-gray-200">
                         <input
@@ -219,7 +232,7 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
                             style={{ borderColor: 'var(--color-accent)', boxShadow: `0 0 0 2px var(--color-accent, #7c3aed)` }}
                         />
                         {/* More filters can be added here */}
-                        <button type="submit" className="px-6 py-3 text-lg text-white rounded-full font-semibold transition-colors hover:opacity-90 min-w-[120px]" 
+                        <button type="submit" className="px-6 py-3 text-lg text-white rounded-full font-semibold transition-colors hover:opacity-90 min-w-[120px]"
                             style={{ backgroundColor: 'var(--color-primary)' }}>
                             Search
                         </button>
@@ -233,8 +246,8 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
                             </div>
                         ) : (
                             (jobs as Job[]).map((job) => (
-                                <article 
-                                    key={job.id} 
+                                <article
+                                    key={job.id}
                                     className="bg-gray-50 p-6 rounded-xl shadow-lg flex flex-col md:flex-row md:items-center md:justify-between border-l-4 transition-all hover:shadow-xl"
                                     style={{ borderColor: 'var(--color-accent)' }}
                                 >
@@ -250,8 +263,12 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
                                         <div className="text-sm text-gray-500 mt-2">Department: {job.department}</div>
                                     </div>
                                     <div className="mt-4 md:mt-0 flex flex-col items-start md:items-end gap-2">
-                                        <div className="text-sm text-gray-500">Posted {job.posted_days_ago ?? 'N/A'} days ago</div>
-                                        <a href="#" className="inline-block px-5 py-2 rounded-full text-white font-medium transition-colors hover:opacity-90"
+                                        <div className="text-sm text-gray-500">Posted {job.posted_days_ago ?? 0} days ago</div>
+                                        {job.salary_range && <div className="text-sm font-medium text-gray-700">{job.salary_range}</div>}
+                                        <div className="flex gap-2">
+                                            {job.work_policy && <span className="text-xs px-2 py-1 bg-gray-200 rounded text-gray-600">{job.work_policy}</span>}
+                                        </div>
+                                        <a href="#" className="inline-block px-5 py-2 rounded-full text-white font-medium transition-colors hover:opacity-90 mt-1"
                                             style={{ backgroundColor: 'var(--color-accent)' }}
                                         >
                                             Apply Now
@@ -263,7 +280,7 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
                     </div>
                 </section>
             </div>
-            
+
             {/* Footer */}
             <footer className="bg-gray-800 text-white mt-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">

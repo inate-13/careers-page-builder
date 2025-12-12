@@ -3,7 +3,7 @@ import React from 'react';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { SectionRenderer } from '../../../components/SectionRenderer';
 import { CompanyHeader } from '../../../components/CompanyHeader';
-import { Briefcase, MapPin, Clock, Search, Filter } from 'lucide-react';
+import { Briefcase, MapPin, Clock, Filter } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Disable caching
@@ -22,7 +22,7 @@ export default async function PreviewPage({ params }: { params: { slug: string }
 
   const { data: jobs } = await supabaseAdmin
     .from('jobs')
-    .select('*')
+    .select('id, title, location, experience_level, employment_type, department, posted_days_ago, salary_range, work_policy')
     .eq('company_id', company.id)
     .order('created_at', { ascending: false });
 
@@ -42,7 +42,7 @@ export default async function PreviewPage({ params }: { params: { slug: string }
       <CompanyHeader company={company} />
 
       {/* --- SECTIONS --- */}
-      <div className="flex flex-col mt-8">
+      <div className="flex flex-col">
         {(sections ?? []).filter((s: any) => s.visible !== false).map((section: any) => (
           <SectionRenderer key={section.id} section={section} primaryColor={primaryColor} />
         ))}
@@ -51,46 +51,68 @@ export default async function PreviewPage({ params }: { params: { slug: string }
       {/* --- JOBS PREVIEW --- */}
       <section className="py-24 bg-slate-50 border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">Open Vacancies</h2>
-            <p className="text-slate-500 text-lg">Sample of roles appearing on your page</p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div>
+              <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-2">Open Vacancies</h2>
+              <p className="text-slate-500 text-lg">Sample of roles appearing on your page</p>
+            </div>
+            <div className="hidden md:block text-sm font-medium text-slate-500 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm">
+              Showing {(jobs ?? []).length} roles
+            </div>
           </div>
 
-          {/* Filter Bar Visual Mock */}
-          <div className="bg-white p-4 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-10 opacity-75 pointer-events-none">
-            <div className="grid md:grid-cols-12 gap-4">
-              <div className="md:col-span-4 relative">
-                <Search className="absolute left-4 top-3.5 text-slate-400" size={20} />
-                <div className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl text-sm border border-transparent">Search roles...</div>
+          {/* Preview Note */}
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-10 mx-auto max-w-4xl opacity-90 rounded-r-lg">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <Filter className="h-5 w-5 text-yellow-500" />
               </div>
-              <div className="md:col-span-3 relative">
-                <div className="w-full pl-4 py-3 bg-slate-50 rounded-xl text-sm border border-transparent">Location</div>
-              </div>
-              <div className="md:col-span-3 relative">
-                <div className="w-full pl-4 py-3 bg-slate-50 rounded-xl text-sm border border-transparent">Department</div>
-              </div>
-              <div className="md:col-span-2 flex items-center justify-center bg-slate-900 text-white font-bold rounded-xl text-sm">
-                Filter
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700 font-medium">
+                  Filters are disabled in preview mode. All active jobs are shown below.
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4 opacity-80 mix-blend-multiply select-none">
+          <div className="space-y-4">
             {(jobs ?? []).length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-xl">
+              <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-xl bg-white">
                 <p className="text-slate-400 font-bold">No active jobs found for preview.</p>
               </div>
             ) : (jobs ?? []).map((job: any) => (
-              <div key={job.id} className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-6 grayscale-[0.0]">
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">{job.title}</h3>
-                  <div className="flex flex-wrap gap-2 text-sm text-slate-500 font-medium">
-                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><Briefcase size={16} /> {job.department}</div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><MapPin size={16} /> {job.location}</div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><Clock size={16} /> {job.employment_type}</div>
+              <div key={job.id} className="group bg-white p-6 rounded-2xl border border-slate-100 hover:border-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 flex flex-col md:flex-row gap-6 cursor-default relative overflow-hidden">
+
+                <div className="flex-1 min-w-0"> {/* content wrapper */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-2">
+                    <h3 className="text-xl font-bold text-slate-900 group-hover:text-indigo-700 transition-colors truncate pr-4">{job.title}</h3>
+                    {job.posted_days_ago !== undefined && (
+                      <span className="text-xs font-semibold text-slate-400 whitespace-nowrap hidden md:block">{job.posted_days_ago === 0 ? 'New' : `${job.posted_days_ago}d ago`}</span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-sm text-slate-500 font-medium mb-4">
+                    <div className="flex items-center gap-1.5"><Briefcase size={15} className="text-slate-400" /> {job.department}</div>
+                    <span className="hidden sm:inline w-1 h-1 rounded-full bg-slate-300"></span>
+                    <div className="flex items-center gap-1.5"><MapPin size={15} className="text-slate-400" /> {job.location}</div>
+                    <span className="hidden sm:inline w-1 h-1 rounded-full bg-slate-300"></span>
+                    <div className="flex items-center gap-1.5"><Clock size={15} className="text-slate-400" /> {job.employment_type}</div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {job.salary_range && <span className="inline-flex items-center px-2.5 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-md border border-green-100/50">{job.salary_range}</span>}
+                    {job.work_policy && <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-100/50">{job.work_policy}</span>}
                   </div>
                 </div>
-                <span className="px-6 py-3 border-2 border-slate-200 rounded-xl text-slate-400 font-bold text-sm">Apply Now</span>
+
+                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 gap-4 mt-2 md:mt-0">
+                  {job.posted_days_ago !== undefined && (
+                    <span className="text-xs font-semibold text-slate-400 md:hidden">{job.posted_days_ago === 0 ? 'New' : `${job.posted_days_ago}d ago`}</span>
+                  )}
+                  <span className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg font-bold text-sm transition-all bg-slate-900 text-white shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap ml-auto md:ml-0" style={{ backgroundColor: accentColor }}>
+                    Apply
+                  </span>
+                </div>
               </div>
             ))}
           </div>

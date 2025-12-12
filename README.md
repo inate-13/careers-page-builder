@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+        **    Career Page Builder ** 
 
-First, run the development server:
+  Deployment -- https://careers-page-builder-rho.vercel.app/
+  Demo  link  -- 
+ 
+ 
+ 
+ 
+ 
+ how to run --
+1. Clone this respository. 
+2. Install dependencies. 
+3. Set up environment variables. 
+4. Run the development server. 
+5. Open http://localhost:3000 in your browser. 
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+-- env file should have following variables 
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+NEXT_PUBLIC_SUPABASE_URL=https://dfsd.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=d. -vF18n0ZiE
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUz--ZE
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+CLOUDINARY_CLOUD_NAME=dxosadfamx
+CLOUDINARY_API_KEY=73243242343265468
+CLOUDINARY_API_SECRET=3sdfdissdfl_
 
-## Learn More
+ 
+ what you built---------
+ 
+ This project consist of two major parts 
+1. Recruiter Actions  - Recruiter can create and manage their career pages . 
+ 2. Candidates Actions - they can only visit the career page of any company . slug/careers 
+ 
+ improvement plan------
+ 1. Biggest improvement is to add more features for recruiters to create and manage their career pages . 
+ 2. We can add features like draggable sections etc for recruiters to create and manage their career pages . 
+ 3. Overall UI can be improved . 
+ 
+ ---- step-by-step user guide 
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+ 1. Any Recruiter can signup using their mail id , password and name . 
+ 2. After signup , they can create a company . 
+ 3. Inside a company , they can create   career pages that may include sections ,theme, color , banner photo , logo photo etc. 
+ 4. Once all the details are fixed , they can publish the career page which can be visited by candidates via slug/careers . 
+ 
