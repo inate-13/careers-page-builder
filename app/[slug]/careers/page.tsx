@@ -3,26 +3,27 @@ import React from 'react';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SectionRenderer } from '../../components/SectionRenderer';
+import { CompanyHeader } from '../../components/CompanyHeader';
+import { MapPin, Briefcase, Clock, Search, Filter } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Disable caching
 
 type Params = { slug: string };
-type SearchParams = { q?: string; location?: string; job_type?: string };
+type SearchParams = { q?: string; location?: string; department?: string; type?: string };
 
-type Company = { id: string; name: string; slug: string; tagline?: string | null; logo_url?: string | null; banner_url?: string | null; primary_color?: string | null; accent_color?: string | null; culture_video_url?: string | null; published?: boolean };
-type Section = { id: string; type: string; title?: string | null; content?: string | null; media_url?: string | null; layout?: string | null; visible?: boolean };
-type Job = { id: string; title: string; location: string; experience_level: string; employment_type: string; department: string };
-
-function embedYouTube(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes('youtu.be')) return `https://www.youtube.com/embed/${u.pathname.slice(1)}`;
-    const v = u.searchParams.get('v');
-    if (v) return `https://www.youtube.com/embed/${v}`;
-  } catch {}
-  return null;
-}
+type Job = {
+  id: string;
+  title: string;
+  location: string;
+  experience_level: string;
+  employment_type: string;
+  department: string;
+  created_at: string;
+  is_active: boolean;
+  company_id: string;
+};
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = params;
@@ -35,6 +36,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function CareersPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const { slug } = params;
+  const query = searchParams.q?.toLowerCase() || '';
+  const filterLoc = searchParams.location || '';
+  const filterDept = searchParams.department || '';
+  const filterType = searchParams.type || '';
 
   const { data: company } = await supabaseAdmin
     .from('companies')
@@ -45,10 +50,10 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
 
   if (!company) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-800 mb-4">404</h1>
-          <p className="text-xl text-gray-600">This careers page is not published yet.</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center p-8">
+          <h1 className="text-6xl font-black text-slate-200 mb-4">404</h1>
+          <p className="text-xl text-slate-600 font-medium">Careers page not found.</p>
         </div>
       </div>
     );
@@ -61,119 +66,145 @@ export default async function CareersPage({ params, searchParams }: { params: Pa
     .eq('visible', true)
     .order('order_index', { ascending: true });
 
-  const { data: jobs } = await supabaseAdmin
+  const { data: allJobs } = await supabaseAdmin
     .from('jobs')
     .select('*')
     .eq('company_id', company.id)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
-  const primaryColor = company.primary_color ?? '#0ea5e9';
-  const accentColor = company.accent_color ?? '#7c3aed';
+  // --- Filtering Logic ---
+  const jobs = (allJobs as Job[] ?? []).filter(job => {
+    const matchesQ = !query || job.title.toLowerCase().includes(query) || job.department.toLowerCase().includes(query);
+    const matchesLoc = !filterLoc || job.location === filterLoc;
+    const matchesDept = !filterDept || job.department === filterDept;
+    const matchesType = !filterType || job.employment_type === filterType;
+    return matchesQ && matchesLoc && matchesDept && matchesType;
+  });
 
-  const themeStyles = { '--color-primary': primaryColor, '--color-accent': accentColor } as React.CSSProperties;
+  const locations = Array.from(new Set((allJobs as Job[] ?? []).map(j => j.location))).sort();
+  const departments = Array.from(new Set((allJobs as Job[] ?? []).map(j => j.department))).sort();
+
+  const primaryColor = company.primary_color ?? '#0f172a';
+  const accentColor = company.accent_color ?? '#3b82f6';
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans" style={themeStyles}>
-      <header className="bg-white shadow sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            {company.logo_url && <img src={company.logo_url} alt="Logo" className="h-12 w-auto" />}
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>{company.name} Careers</h1>
-          </div>
-          <Link href="#jobs">
-            <button className="px-6 py-3 rounded-full text-white font-semibold" style={{ backgroundColor: 'var(--color-primary)' }}>
-              View Jobs ({jobs?.length ?? 0})
-            </button>
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-900">
 
-      {company.banner_url && (
-        <div className="relative h-96 w-full">
-          <img src={company.banner_url} alt="Banner" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
-            <div className="text-white p-10">
-              <h2 className="text-5xl font-extrabold mb-3">Join {company.name}</h2>
-              {company.tagline && <p className="text-2xl opacity-90">{company.tagline}</p>}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Reusable Header Component (Banner, Logo, Title) */}
+      <CompanyHeader company={company} />
 
-      <div className="max-w-7xl mx-auto px-6 py-12 space-y-16">
-        {sections?.map((s) => {
-          if (s.type === 'culture_video' && company.culture_video_url) {
-            const embed = embedYouTube(company.culture_video_url);
-            if (!embed) return null;
-            return (
-              <section key={s.id} className="bg-white p-10 rounded-2xl shadow-xl">
-                <h2 className="text-4xl font-bold text-center mb-8" style={{ color: 'var(--color-primary)' }}>{s.title || 'Our Culture'}</h2>
-                <div className="aspect-video rounded-xl overflow-hidden shadow-2xl">
-                  <iframe src={embed} allowFullScreen className="w-full h-full"></iframe>
-                </div>
-              </section>
-            );
-          }
-
-          if (['about_us', 'life_at_company', 'custom_text'].includes(s.type)) {
-            return (
-              <section key={s.id} className="bg-white p-10 rounded-2xl shadow-xl">
-                {s.title && <h2 className="text-4xl font-bold mb-6" style={{ color: 'var(--color-primary)' }}>{s.title}</h2>}
-                <div className="prose prose-lg max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: s.content || '' }} />
-                {s.media_url && <img src={s.media_url} alt={s.title} className="mt-8 rounded-xl shadow-lg w-full" />}
-              </section>
-            );
-          }
-
-          if (s.type === 'benefits' && s.layout) {
-            let benefits = [];
-            try { benefits = JSON.parse(s.layout); } catch {}
-            return (
-              <section key={s.id} className="bg-white p-10 rounded-2xl shadow-xl">
-                <h2 className="text-4xl font-bold text-center mb-10" style={{ color: 'var(--color-primary)' }}>{s.title || 'Benefits'}</h2>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {benefits.map((b: any, i: number) => (
-                    <div key={i} className="p-6 border rounded-xl text-center">
-                      <div className="text-4xl mb-3">{b.icon || 'Star'}</div>
-                      <h3 className="font-bold text-lg">{b.title}</h3>
-                      <p className="text-gray-600 mt-2">{b.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          }
-
-          return null;
-        })}
-
-        <section id="jobs" className="bg-white p-10 rounded-2xl shadow-xl">
-          <h2 className="text-4xl font-bold text-center mb-10" style={{ color: 'var(--color-primary)' }}>Open Positions</h2>
-          {(!jobs || jobs.length === 0) ? (
-            <p className="text-center text-xl text-gray-500 py-10">No open roles at the moment. Check back soon!</p>
-          ) : (
-            <div className="space-y-6">
-              {jobs.map((job: Job) => (
-                <div key={job.id} className="p-8 border-2 rounded-xl hover:shadow-xl transition-shadow" style={{ borderColor: 'var(--color-accent)' }}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>{job.title}</h3>
-                      <p className="text-gray-600 mt-2">{job.location} • {job.employment_type}</p>
-                    </div>
-                    <a href="#" className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-semibold hover:opacity-90">
-                      Apply Now
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+      {/* --- SECTIONS --- */}
+      <div className="flex flex-col">
+        {(sections ?? []).map(section => (
+          <SectionRenderer key={section.id} section={section} primaryColor={primaryColor} />
+        ))}
       </div>
 
-      <footer className="bg-gray-900 text-white py-10 text-center">
-        <p>&copy; {new Date().getFullYear()} {company.name}. All rights reserved.</p>
+      {/* --- JOBS SECTION --- */}
+      <section id="open-positions" className="py-24 bg-slate-50 border-t border-slate-200 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div>
+              <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-2">Open Vacancies</h2>
+              <p className="text-slate-500 text-lg">Detailed list of open roles at {company.name}</p>
+            </div>
+          </div>
+
+          {(allJobs ?? []).length === 0 ? (
+            // CASE: No Jobs in Database at all
+            <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200">
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">📭</div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">No open positions right now</h3>
+              <p className="text-slate-500 max-w-md mx-auto">We don't have any active job listings at the moment, but please check back soon!</p>
+            </div>
+          ) : (
+            <>
+              {/* Filter Bar */}
+              <div className="bg-white p-4 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-10 sticky top-4 z-40">
+                <form className="grid md:grid-cols-12 gap-4">
+                  <div className="md:col-span-4 relative group">
+                    <Search className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                    <input
+                      name="q"
+                      defaultValue={query}
+                      placeholder="Search roles..."
+                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-xl text-sm outline-none transition-all"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3 relative">
+                    <select name="location" defaultValue={filterLoc} className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-xl text-sm appearance-none outline-none cursor-pointer">
+                      <option value="">Any Location</option>
+                      {locations.map(l => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                    <MapPin className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" size={16} />
+                  </div>
+
+                  <div className="md:col-span-3 relative">
+                    <select name="department" defaultValue={filterDept} className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-xl text-sm appearance-none outline-none cursor-pointer">
+                      <option value="">Any Department</option>
+                      {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <Briefcase className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" size={16} />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="md:col-span-2 text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <Filter size={18} />
+                    Filter
+                  </button>
+                </form>
+              </div>
+
+              {/* Job Cards */}
+              <div className="space-y-4">
+                {jobs.length === 0 ? (
+                  <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🧐</div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-1">No roles match your filters</h3>
+                    <p className="text-slate-500">Try adjusting your search criteria or view all jobs.</p>
+                    <a href={`/${slug}/careers`} className="text-indigo-600 font-bold mt-4 inline-block hover:underline">Clear all filters</a>
+                  </div>
+                ) : (
+                  jobs.map(job => (
+                    <div key={job.id} className="group bg-white p-6 md:p-8 rounded-3xl border border-slate-200 hover:border-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1.5 h-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: accentColor }} />
+
+                      <div className="flex-1">
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 group-hover:text-indigo-700 transition-colors mb-3">{job.title}</h3>
+                        <div className="flex flex-wrap gap-y-2 gap-x-6 text-sm text-slate-500 font-medium">
+                          <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><Briefcase size={16} className="text-slate-400" /> {job.department}</div>
+                          <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><MapPin size={16} className="text-slate-400" /> {job.location}</div>
+                          <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><Clock size={16} className="text-slate-400" /> {job.employment_type}</div>
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        <span
+                          className="inline-flex items-center justify-center px-8 py-3 rounded-full font-bold transition-all bg-slate-50 text-slate-900 group-hover:bg-slate-900 group-hover:text-white"
+                        >
+                          Apply Now
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
+        </div>
+      </section>
+
+      {/* --- FOOTER --- */}
+      <footer className="bg-white border-t border-slate-200 py-12 mt-20">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-sm font-medium">
+          <p>&copy; {new Date().getFullYear()} {company.name}. All rights reserved.</p>
+          <p className="flex items-center gap-2">Built with Inate Platform</p>
+        </div>
       </footer>
     </div>
   );

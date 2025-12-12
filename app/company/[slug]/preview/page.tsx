@@ -1,175 +1,102 @@
 // app/company/[slug]/preview/page.tsx
 import React from 'react';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { SectionRenderer } from '../../../components/SectionRenderer';
+import { CompanyHeader } from '../../../components/CompanyHeader';
+import { Briefcase, MapPin, Clock, Search, Filter } from 'lucide-react';
 
-function embedYouTube(url: string) {
-  // accept watch?v= or youtu.be links, return embed src
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes('youtu.be')) {
-      const id = u.pathname.slice(1);
-      return `https://www.youtube.com/embed/${id}`;
-    }
-    if (u.hostname.includes('youtube.com') || u.hostname.includes('www.youtube.com')) {
-      const v = u.searchParams.get('v');
-      if (v) return `https://www.youtube.com/embed/${v}`;
-      // maybe embed path like /embed/...
-      if (u.pathname.startsWith('/embed/')) return url;
-    }
-  } catch (e) {
-    // not a URL
-  }
-  return null;
-}
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Disable caching
 
 export default async function PreviewPage({ params }: { params: { slug: string } }) {
   const slug = params.slug;
   const { data: company, error: compErr } = await supabaseAdmin.from('companies').select('*').eq('slug', slug).maybeSingle();
-  if (compErr) {
-    console.error('preview company err', compErr);
-    return <div className="p-6 text-red-600">Error loading company</div>;
-  }
-  if (!company) return <div className="p-6">Company not found</div>;
 
-  const { data: sections } = await supabaseAdmin.from('company_sections').select('*').eq('company_id', company.id).order('order_index', { ascending: true });
-  const { data: jobs } = await supabaseAdmin.from('jobs').select('*').eq('company_id', company.id).order('created_at', { ascending: false });
+  if (!company) return <div className="p-10 text-center text-red-500 font-bold">Company not found via slug '{slug}'</div>;
+
+  const { data: sections } = await supabaseAdmin
+    .from('company_sections')
+    .select('*')
+    .eq('company_id', company.id)
+    .order('order_index', { ascending: true });
+
+  const { data: jobs } = await supabaseAdmin
+    .from('jobs')
+    .select('*')
+    .eq('company_id', company.id)
+    .order('created_at', { ascending: false });
+
+  const primaryColor = company.primary_color ?? '#0f172a';
+  const accentColor = company.accent_color ?? '#3b82f6';
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: company?.accent_color ?? '#f8fafc' }}>
-      <div className="max-w-6xl mx-auto">
-        {/* Preview banner */}
-        <div className="mt-6 mb-6">
-          <div className="rounded overflow-hidden relative h-48 md:h-64" style={{ background: company.banner_url ? `url(${company.banner_url}) center/cover no-repeat` : company.primary_color ?? '#0ea5e9' }}>
-            <div className="absolute inset-0 bg-black/30" />
-            <div className="absolute left-6 bottom-6 flex items-center gap-4">
-              {company.logo_url ? <img src={company.logo_url} alt="logo" className="w-20 h-20 rounded object-cover" /> : <div className="w-20 h-20 bg-white/10 rounded" />}
-              <div className="text-white">
-                <h1 className="text-2xl font-bold">{company.name} (Preview)</h1>
-                {company.tagline && <p className="text-sm">{company.tagline}</p>}
+    <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden relative">
+
+      {/* Floating Preview Badge */}
+      <div className="fixed bottom-6 right-6 z-50 bg-green-900 text-green-200 px-5 py-3 rounded-full shadow-[0_0_20px_5px_rgba(34,197,94,0.7)] text-sm font-bold flex items-center gap-2 animate-bounce border border-green-700">
+        <span className="w-2.5 h-2.5 bg-green-400 rounded-full shadow-[0_0_10px_rgba(74,222,128,0.5)]"></span>
+        Live Preview Mode
+      </div>
+
+      {/* Reusable Header Component */}
+      <CompanyHeader company={company} />
+
+      {/* --- SECTIONS --- */}
+      <div className="flex flex-col">
+        {(sections ?? []).filter((s: any) => s.visible !== false).map((section: any) => (
+          <SectionRenderer key={section.id} section={section} primaryColor={primaryColor} />
+        ))}
+      </div>
+
+      {/* --- JOBS PREVIEW --- */}
+      <section className="py-24 bg-slate-50 border-t border-slate-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">Open Vacancies</h2>
+            <p className="text-slate-500 text-lg">Sample of roles appearing on your page</p>
+          </div>
+
+          {/* Filter Bar Visual Mock */}
+          <div className="bg-white p-4 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-10 opacity-75 pointer-events-none">
+            <div className="grid md:grid-cols-12 gap-4">
+              <div className="md:col-span-4 relative">
+                <Search className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                <div className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl text-sm border border-transparent">Search roles...</div>
+              </div>
+              <div className="md:col-span-3 relative">
+                <div className="w-full pl-4 py-3 bg-slate-50 rounded-xl text-sm border border-transparent">Location</div>
+              </div>
+              <div className="md:col-span-3 relative">
+                <div className="w-full pl-4 py-3 bg-slate-50 rounded-xl text-sm border border-transparent">Department</div>
+              </div>
+              <div className="md:col-span-2 flex items-center justify-center bg-slate-900 text-white font-bold rounded-xl text-sm">
+                Filter
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          <main className="md:col-span-2 space-y-6">
-            {(sections ?? []).filter((s: any) => s.visible !== false).map((s: any) => {
-              // render by type
-              if (s.type === 'cards') {
-                // parse cards JSON from layout
-                let cards = [];
-                try {
-                  cards = s.layout ? JSON.parse(s.layout) : [];
-                } catch (e) {
-                  cards = [];
-                }
-                return (
-                  <section key={s.id} className="bg-white p-4 rounded shadow">
-                    {s.title && <h2 className="text-xl font-semibold mb-3">{s.title}</h2>}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {cards.map((c: any, i: number) => (
-                        <article key={i} className="p-3 border rounded">
-                          {c.image && <img src={c.image} alt={c.title} className="w-full h-32 object-cover rounded mb-2" />}
-                          <div className="font-semibold">{c.title}</div>
-                          <div className="text-sm text-slate-600">{c.desc}</div>
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                );
-              }
-
-              if (s.type === 'carousel') {
-                // media_url could be a comma-separated list or layout JSON
-                let items: string[] = [];
-                if (s.layout) {
-                  try {
-                    const j = JSON.parse(s.layout);
-                    if (Array.isArray(j)) items = j;
-                  } catch (e) {
-                    // fallback: media_url comma separated
-                    if (s.media_url) items = s.media_url.split(',').map((x: string) => x.trim());
-                  }
-                } else if (s.media_url) {
-                  items = s.media_url.split(',').map((x: string) => x.trim());
-                }
-
-                return (
-                  <section key={s.id} className="bg-white p-4 rounded shadow">
-                    {s.title && <h2 className="text-xl font-semibold mb-3">{s.title}</h2>}
-                    <div className="overflow-x-auto snap-x snap-mandatory" style={{ scrollBehavior: 'smooth' }}>
-                      <div className="flex gap-3">
-                        {items.map((src: string, i: number) => (
-                          <img key={i} src={src} className="snap-center w-full md:w-96 h-48 object-cover rounded" />
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                );
-              }
-
-              if (s.type === 'video') {
-                // prefer media_url then company.culture_video_url then content
-                const url = s.media_url || company.culture_video_url || s.content || '';
-                const embed = embedYouTube(url || '');
-                return (
-                  <section key={s.id} className="bg-white p-4 rounded shadow">
-                    {s.title && <h2 className="text-xl font-semibold mb-3">{s.title}</h2>}
-                    {embed ? (
-                      <div className="aspect-video rounded overflow-hidden">
-                        <iframe src={embed} title="video" frameBorder={0} allowFullScreen className="w-full h-full" />
-                      </div>
-                    ) : (
-                      <div className="text-slate-700" dangerouslySetInnerHTML={{ __html: s.content ?? '' }} />
-                    )}
-                  </section>
-                );
-              }
-
-              // default
-              return (
-                <section key={s.id} className="bg-white p-4 rounded shadow">
-                  {s.title && <h2 className="text-xl font-semibold mb-2">{s.title}</h2>}
-                  <div className="text-slate-700" dangerouslySetInnerHTML={{ __html: s.content ?? '' }} />
-                  {s.media_url && <img src={s.media_url} alt={s.title ?? ''} className="mt-3 rounded max-h-80 object-cover w-full" />}
-                </section>
-              );
-            })}
-
-            {/* Jobs list */}
-            <section className="bg-white p-4 rounded shadow">
-              <h2 className="text-xl font-semibold mb-3">Open roles</h2>
-              {(jobs ?? []).length === 0 ? <div className="text-slate-600">No roles right now.</div> : jobs.map((j: any) => (
-                <div key={j.id} className="border-b last:border-b-0 py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold">{j.title}</div>
-                      <div className="text-sm text-slate-500">{j.location} • {j.experience_level}</div>
-                    </div>
-                    <div className="text-sm">{j.posted_days_ago ?? 'N/A'} days ago</div>
+          <div className="space-y-4 opacity-80 mix-blend-multiply select-none">
+            {(jobs ?? []).length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-xl">
+                <p className="text-slate-400 font-bold">No active jobs found for preview.</p>
+              </div>
+            ) : (jobs ?? []).map((job: any) => (
+              <div key={job.id} className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-6 grayscale-[0.0]">
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">{job.title}</h3>
+                  <div className="flex flex-wrap gap-2 text-sm text-slate-500 font-medium">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><Briefcase size={16} /> {job.department}</div>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><MapPin size={16} /> {job.location}</div>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full"><Clock size={16} /> {job.employment_type}</div>
                   </div>
                 </div>
-              ))}
-            </section>
-          </main>
-
-          <aside>
-            <div className="bg-white p-4 rounded shadow mb-4">
-              <h3 className="font-semibold">{company.name}</h3>
-              <div className="text-sm text-slate-600">{company.tagline}</div>
-              <div className="mt-2">
-                <a className="text-sm text-sky-600 underline" href={`/${company.slug}/careers`}>Open public page</a>
+                <span className="px-6 py-3 border-2 border-slate-200 rounded-xl text-slate-400 font-bold text-sm">Apply Now</span>
               </div>
-            </div>
-
-            <div className="bg-white p-4 rounded shadow">
-              <h4 className="font-semibold mb-2">Brand</h4>
-              <div className="text-sm">Primary: <span style={{ color: company.primary_color }}>{company.primary_color ?? '—'}</span></div>
-              <div className="text-sm">Accent: <span style={{ color: company.accent_color }}>{company.accent_color ?? '—'}</span></div>
-            </div>
-          </aside>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
+
     </div>
   );
 }

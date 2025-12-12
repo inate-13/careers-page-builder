@@ -1,4 +1,4 @@
-// app/company/[slug]/edit/EditClient.tsx
+// app/company/[slug]/edit/ClientEditShadcn.tsx
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -71,9 +71,14 @@ export default function EditClient({
         primary_color: company.primary_color ?? null,
         accent_color: company.accent_color ?? null,
         culture_video_url: company.culture_video_url ?? null,
+        // Also save manually entered URLs if no file is uploading
+        logo_url: company.logo_url,
+        banner_url: company.banner_url
       };
+      // If files selected, upload and override
       if (logoFile) patch.logo_url = await uploadFile(logoFile, 'logo_url');
       if (bannerFile) patch.banner_url = await uploadFile(bannerFile, 'banner_url');
+
       const payload = { companyId: company.id, company: patch };
       const res = await fetch('/api/company/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const json = await res.json();
@@ -151,7 +156,7 @@ export default function EditClient({
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/dashboard')} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50">Dashboard</button>
-            <button onClick={() => router.push(`/${company.slug}/preview`)} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50">Preview</button>
+            <button onClick={() => router.push(`/company/${company.slug}/preview`)} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50">Preview</button>
             <button onClick={() => { void navigator.clipboard?.writeText(`${location.origin}/${company.slug}/careers`); toast('Public link copied'); }} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50">Copy Link</button>
             <button onClick={handlePublish} className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-sm">Publish Changes</button>
           </div>
@@ -176,29 +181,67 @@ export default function EditClient({
                   <input value={company.tagline ?? ''} onChange={(e) => setCompany({ ...company, tagline: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Building the future" />
                 </div>
 
-                {/* Logo Upload with Preview */}
+                {/* Logo Upload or URL */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Logo</label>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden">
+                  <div className="flex justify-between items-baseline mb-2">
+                    <label className="block text-sm font-medium text-slate-700">Logo</label>
+                    <span className="text-xs text-slate-400">Upload file OR paste URL</span>
+                  </div>
+                  <div className="flex items-start gap-4 mb-3">
+                    <div className="w-16 h-16 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                       {company.logo_url ? <img src={company.logo_url} className="w-full h-full object-contain" alt="Logo" /> : <span className="text-xs text-slate-400">None</span>}
                     </div>
-                    <input ref={logoRef} type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      />
+                      <input
+                        type="text"
+                        value={company.logo_url ?? ''}
+                        onChange={(e) => setCompany({ ...company, logo_url: e.target.value })}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 font-mono text-slate-600"
+                        placeholder="https://... (Direct Link)"
+                      />
+                    </div>
                   </div>
-                  {logoFile && <p className="text-xs text-amber-600 mt-1">New logo selected (save to apply)</p>}
+                  {logoFile && <p className="text-xs text-amber-600 font-medium">New file selected (click Save to upload)</p>}
                 </div>
 
-                {/* Banner Upload with Preview */}
+                {/* Banner Upload or URL */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Banner</label>
-                  <div className="w-full h-24 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden mb-2 relative">
+                  <div className="flex justify-between items-baseline mb-2">
+                    <label className="block text-sm font-medium text-slate-700">Banner Image</label>
+                    <span className="text-xs text-slate-400">Upload file OR paste URL</span>
+                  </div>
+                  <div className="w-full h-32 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden mb-3 relative group">
                     {company.banner_url ? (
                       <img src={company.banner_url} className="w-full h-full object-cover" alt="Banner" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">No Banner</div>
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">No Banner Set</div>
                     )}
+                    {/* Helper hint for full width */}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] p-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      Will display full-width on public page
+                    </div>
                   </div>
-                  <input ref={bannerRef} type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] ?? null)} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setBannerFile(e.target.files?.[0] ?? null)}
+                      className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    />
+                    <input
+                      type="text"
+                      value={company.banner_url ?? ''}
+                      onChange={(e) => setCompany({ ...company, banner_url: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 font-mono text-slate-600"
+                      placeholder="https://... (Direct Link)"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
